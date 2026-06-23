@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f2a93b">
+    <meta name="description" content="Divide cuentas de mesa y gastos compartidos sin backend y costo cero.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
+    <title>Claramente: cuentas claras</title>
+    <link rel="icon" href="icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Claramente: cuentas claras.</p>
+          <h1>Claramente</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost-button topbar-button" id="supportBtn" type="button" aria-label="Ayuda y soporte">?</button>
+          <button class="ghost-button topbar-button" id="resetBtn" type="button">Limpiar</button>
+        </div>
+      </header>
+
+      <nav class="bottom-nav" aria-label="Secciones">
+        <button class="nav-item active" data-tab="tab-group" type="button"><span class="nav-label">Grupo</span></button>
+        <button class="nav-item" data-tab="tab-expenses" type="button"><span class="nav-label">Gastos</span></button>
+        <button class="nav-item" data-tab="tab-settlements" type="button"><span class="nav-label">Pagos</span></button>
+      </nav>
+
+      <div class="main-grid">
+        <div id="tab-group" class="tab-content">
+          <details class="panel group-panel" id="groupConfigDetails">
+            <summary class="group-summary-header">
+              <div>
+                <h2 id="groupTitle">Opciones de grupo</h2>
+                <p>El nombre del grupo es opcional.</p>
+              </div>
+            </summary>
+            <div class="group-config-content">
+              <div class="form-row">
+                <label class="field"><span>Nombre del grupo opcional</span><input id="groupNameInput" type="text" autocomplete="off" placeholder="Cena, viaje, renta..."></label>
+                <label class="field"><span>Moneda</span>
+                  <select id="currencyInput">
+                    <option value="MXN">MXN</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="COP">COP</option>
+                    <option value="ARS">ARS</option>
+                    <option value="CLP">CLP</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <section class="panel" aria-labelledby="peopleTitle">
+            <div class="section-header">
+              <div>
+                <h2 id="peopleTitle">Participantes</h2>
+                <p>Agrega a quienes van a dividir la cuenta.</p>
+              </div>
+              <span class="counter" id="peopleCount">0</span>
+            </div>
+            <form class="inline-form" id="personForm">
+              <label class="sr-only" for="personNameInput">Nombre</label>
+              <input id="personNameInput" type="text" autocomplete="off" placeholder="Nombre">
+              <button type="submit">Agregar</button>
+            </form>
+            <ul class="list" id="peopleList"></ul>
+            <div class="guest-panel hidden" id="guestPanel"></div>
+            <div class="tab-flow-actions"><button class="primary-button next-tab-btn" data-next-tab="tab-expenses" type="button">Siguiente: agregar gastos</button></div>
+          </section>
+        </div>
+
+        <div id="tab-expenses" class="tab-content hidden">
+          <section class="panel" aria-labelledby="expenseTitle">
+            <div class="section-header">
+              <div>
+                <h2 id="expenseTitle">Platillos y gastos</h2>
+                <p>Divide por consumo o agrega gastos compartidos por igual.</p>
+              </div>
+              <span class="counter" id="expenseCount">0</span>
+            </div>
+            <button class="primary-button full-action" id="openRestaurantBtn" type="button">Dividir por platillo</button>
+            <div id="restaurantWarning" class="restaurant-warning hidden">
+              <span>Agrega participantes en Grupo para usar esta opcion.</span>
+            </div>
+            <details class="single-expense">
+              <summary>Agregar gasto compartido</summary>
+              <form class="expense-form" id="expenseForm">
+                <p class="field-hint">Para compras que se reparten entre varias personas sin distinguir platillos, como taxi, botellas u hotel.</p>
+                <label class="field"><span>Descripcion</span><input id="expenseDescriptionInput" type="text" autocomplete="off" placeholder="Taxi, hotel, botellas..."></label>
+                <div class="form-row">
+                  <label class="field"><span>Monto</span><input id="expenseAmountInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+                  <label class="field"><span>Pago</span><select id="expensePaidByInput"></select></label>
+                </div>
+                <fieldset class="split-box">
+                  <div class="split-header"><legend>Dividir entre</legend><button class="text-button" id="selectAllSplitBtn" type="button">Todos</button></div>
+                  <div class="chips" id="splitWithList"></div>
+                </fieldset>
+                <button class="primary-button" type="submit">Agregar gasto</button>
+              </form>
+            </details>
+            <ul class="list expense-list" id="expenseList"></ul>
+            <div class="tab-flow-actions"><button class="primary-button next-tab-btn" data-next-tab="tab-settlements" type="button">Siguiente: pagos</button></div>
+          </section>
+        </div>
+
+        <div id="tab-settlements" class="tab-content hidden">
+          <section class="panel" aria-labelledby="balanceTitle">
+            <div class="section-header">
+              <div>
+                <h2 id="balanceTitle">Pagos</h2>
+                <p>Quien aporta, quien cobra y cuanto falta juntar.</p>
+              </div>
+            </div>
+            <div class="balance-summary" id="balanceList"></div>
+            <div class="settlements" id="settlementList"></div>
+            <div class="table-close" id="tableClosePanel"></div>
+          </section>
+          <section class="panel share-panel" aria-labelledby="shareTitle">
+            <div class="section-header">
+              <div>
+                <h2 id="shareTitle">Compartir</h2>
+                <p>Copia el resumen para WhatsApp o un link actualizado.</p>
+              </div>
+            </div>
+            <p class="privacy-note" id="privacyNote"></p>
+            <div class="share-actions">
+              <button class="primary-button" id="copyMessageBtn" type="button">Copiar resumen para WhatsApp</button>
+              <button id="copyLinkBtn" type="button">Copiar link</button>
+            </div>
+            <label class="field"><span>Link generado</span><textarea id="shareLinkOutput" readonly rows="3"></textarea></label>
+            <label class="field hidden" id="privateKeyField"><span>Clave privada</span><input id="privateKeyOutput" type="text" readonly></label>
+            <button class="hidden" id="copyPrivateKeyBtn" type="button">Copiar clave</button>
+            <p class="status-line" id="statusLine" aria-live="polite"></p>
+          </section>
+        </div>
+
+        <div id="tab-support" class="tab-content hidden">
+          <section class="panel group-panel" aria-labelledby="supportTitle">
+            <div class="section-header">
+              <div>
+                <h2 id="supportTitle">Ayuda y soporte</h2>
+                <p>Guia rapida y herramientas locales para revisar Claramente.</p>
+              </div>
+            </div>
+            <div class="accordion-group">
+              <details class="support-accordion"><summary>Como empezar a dividir gastos</summary><div class="accordion-content"><p>Agrega participantes, registra platillos o gastos, y revisa Pagos para saber cuanto falta juntar.</p></div></details>
+              <details class="support-accordion"><summary>Como funciona cumpleanero o invitado</summary><div class="accordion-content"><p>Marca a quien no va a pagar desde Grupo. Su parte baja a $0 y se reparte entre quienes si pagan.</p></div></details>
+              <details class="support-accordion"><summary>Privacidad del link</summary><div class="accordion-content"><p>El link incluye los datos para abrir el grupo. Compartelo solo con quienes participan en la cuenta.</p></div></details>
+            </div>
+          </section>
+          <section class="panel backup-panel" aria-labelledby="backupTitle">
+            <div class="section-header"><div><h2 id="backupTitle">Guardar o cargar copia del grupo</h2><p>Guarda una copia de seguridad en tu dispositivo para no perder los datos del grupo.</p></div></div>
+            <div class="diagnostic-box">
+              <p>Descarga un archivo con todos los participantes y gastos actuales, o sube uno guardado anteriormente para continuar.</p>
+              <div class="diagnostic-actions">
+                <button type="button" class="topbar-button" id="exportBackupBtn">Guardar copia (.claramente)</button>
+                <button type="button" class="topbar-button accent-button" id="importBackupBtn">Cargar copia</button>
+                <input type="file" id="importBackupFile" accept=".claramente,.clara,.json,.txt" style="display: none;">
+              </div>
+            </div>
+          </section>
+          <section class="panel support-dev-panel" aria-labelledby="devTitle">
+            <div class="section-header"><div><h2 id="devTitle">Diagnostico y errores</h2><p>Herramientas tecnicas para resolver fallos y reportar problemas.</p></div></div>
+            <div class="diagnostic-box"><p><strong>Version de cache:</strong> <code id="cacheVersionLabel">clara-cache-v32</code></p><div class="diagnostic-actions"><button type="button" class="topbar-button" id="copyStateJsonBtn">Copiar estado JSON</button><button type="button" class="topbar-button accent-button" id="forceReloadBtn">Forzar actualizacion</button></div></div>
+            <div class="error-console-panel"><h3>Consola de errores</h3><div id="errorConsoleBox" class="error-console-box no-errors">No se han detectado errores de ejecucion. Todo funciona bien.</div><button type="button" class="primary-button hidden full-action compact-action" id="copyErrorLogBtn">Copiar reporte de errores</button></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <dialog class="restaurant-dialog" id="restaurantDialog">
+      <form method="dialog" id="restaurantForm">
+        <div class="dialog-header">
+          <h2>Dividir por platillo</h2>
+          <button class="close-dialog-btn" id="closeRestaurantBtn" type="button" aria-label="Cerrar">&times;</button>
+        </div>
+        <p class="dialog-subtitle">Captura los productos manualmente y marca quien consumio cada uno.</p>
+        <div id="ticketTableContainer">
+          <div class="ticket-items-container">
+            <table class="ticket-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="price-column">Precio</th>
+                  <th>Lo consumen</th>
+                  <th class="remove-column"></th>
+                </tr>
+              </thead>
+              <tbody id="ticketItemsBody"></tbody>
+            </table>
+          </div>
+          <button class="text-button add-ticket-item" id="addTicketItemBtn" type="button">+ Agregar otro producto</button>
+          <div class="form-row">
+            <fieldset class="tip-field">
+              <legend>Propina</legend>
+              <div class="tip-options" id="ticketTipPercent">
+                <label><input type="radio" name="ticketTipPercent" value="0"><span>Sin propina</span></label>
+                <label><input type="radio" name="ticketTipPercent" value="5"><span>5%</span></label>
+                <label><input type="radio" name="ticketTipPercent" value="10" checked><span>10%</span></label>
+                <label><input type="radio" name="ticketTipPercent" value="15"><span>15%</span></label>
+              </div>
+            </fieldset>
+            <label class="field"><span>Cargos adicionales</span><input id="ticketTaxFixed" type="number" min="0" step="0.01" value="0.00" placeholder="0.00"><span class="field-hint">IVA, servicio u otros importes fijos del ticket.</span></label>
+          </div>
+          <div class="form-row">
+            <label class="field"><span>Quien pago la cuenta</span><select id="ticketPaidBySelect"></select><span class="field-hint">Deja "Nadie" si estan juntando el dinero antes de pagar.</span></label>
+            <label class="field"><span>Nombre de la cuenta</span><input id="ticketNameInput" type="text" value="Restaurante" placeholder="Cena, almuerzo..."></label>
+          </div>
+          <div class="ticket-summary-box">
+            <div class="summary-line"><span>Subtotal productos:</span><span id="ticketSubtotalLabel">$0.00</span></div>
+            <div class="summary-line"><span>Total calculado:</span><span id="ticketTotalLabel">$0.00</span></div>
+          </div>
+          <div class="dialog-actions">
+            <button class="ghost-button" id="cancelRestaurantBtn" type="button">Cancelar</button>
+            <button class="primary-button" id="saveRestaurantBtn" type="button">Guardar y dividir</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="reminder-dialog" id="reminderDialog"><form method="dialog" id="reminderForm"><div class="dialog-header"><h2>Recordatorio de cobro</h2><button class="close-dialog-btn" id="closeReminderBtn" type="button" aria-label="Cerrar">&times;</button></div><p class="dialog-subtitle">Guarda una nota simple para que aparezca en el mensaje de WhatsApp cuando esta persona cobre.</p><input id="reminderPersonIdInput" type="hidden"><p class="dialog-person" id="reminderPersonName"></p><label class="field"><span>Recordatorio</span><textarea id="reminderTextInput" rows="4" autocomplete="off" placeholder="Transferencia, efectivo, CLABE..."></textarea></label><div class="dialog-actions"><button class="ghost-button" type="button" id="cancelReminderBtn">Cancelar</button><button class="primary-button" type="submit">Guardar</button></div></form></dialog>
+
+    <dialog class="import-dialog" id="privateKeyDialog"><form method="dialog" id="privateKeyForm"><h2>Este link necesita clave</h2><p>Pega la clave que el host compartio aparte.</p><label class="field"><span>Clave</span><input id="privateKeyInput" type="text" autocomplete="off"></label><div class="dialog-actions"><button type="button" id="cancelPrivateKeyBtn">Cancelar</button><button class="primary-button" type="submit">Abrir</button></div></form></dialog>
+
+    <script src="shell-router.js" defer></script>
+    <script src="clara-core.js" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>

@@ -22,6 +22,8 @@
     people: [],
     items: [],
     paidMode: "",
+    paymentMethod: "",
+    cardPayerId: "",
     paidById: "",
     editing: null
   };
@@ -182,9 +184,16 @@
     const canContinue = itemsReady() && payers().length > 0;
     return `
       ${renderHeader(itemQuestion(), itemHelp())}
+      <p class="section-note item-decision-note">¿Quien lo consumio?</p>
       <div class="quick-row" aria-label="Tipo de cargo">
-        <button class="quick-button ${state.itemMode === "product" ? "active" : ""}" type="button" data-item-mode="product">Producto</button>
-        <button class="quick-button ${state.itemMode === "shared" ? "active" : ""}" type="button" data-item-mode="shared">Para todos</button>
+        <button class="quick-button ${state.itemMode === "shared" ? "active" : ""}" type="button" data-item-mode="shared">
+          <strong>Lo comieron todos</strong>
+          <span>Se reparte entre toda la mesa.</span>
+        </button>
+        <button class="quick-button ${state.itemMode === "product" ? "active" : ""}" type="button" data-item-mode="product">
+          <strong>No todos lo comieron</strong>
+          <span>Marca solo a quienes lo pidieron.</span>
+        </button>
       </div>
       ${renderItemForm()}
       <section class="list" aria-label="Cuenta agregada">
@@ -197,15 +206,15 @@
   }
 
   function itemQuestion() {
-    if (state.itemMode === "shared") return "Agregar cargo para todos";
+    if (state.itemMode === "shared") return "Agregar algo para todos";
     if (state.itemMode === "single") return "Agregar cargo de una persona";
     return "Agregar productos y cargos";
   }
 
   function itemHelp() {
-    if (state.itemMode === "shared") return "Usa esto para propina, taxi o algo que se reparte entre quienes si pagan.";
+    if (state.itemMode === "shared") return "Escribe el producto o cargo que se repartira entre todas las personas que pagan.";
     if (state.itemMode === "single") return "Usa esto para algo que solo consumio una persona. Aqui tambien marcas quien lo pago.";
-    return "Pon nombre y precio. Si solo una persona lo consumio, marca solo su nombre en el producto.";
+    return "Escribe el producto y despues marca exactamente quienes lo comieron.";
   }
 
   function renderItemForm() {
@@ -213,15 +222,15 @@
       return `
         <form class="panel form-grid" id="sharedForm" novalidate>
           <label class="field">
-            <span>Nombre del gasto</span>
-            <input id="sharedNameInput" name="itemName" type="text" autocomplete="off" placeholder="Propina">
+            <span>Producto o cargo</span>
+            <input id="sharedNameInput" name="itemName" type="text" autocomplete="off" placeholder="Pizza">
           </label>
           <label class="field">
             <span>Monto</span>
             <input name="itemAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
           </label>
           <p class="error-text" id="itemError"></p>
-          <button class="primary-button" type="submit">${icon("plus")}<span>Agregar gasto para todos</span></button>
+          <button class="primary-button" type="submit">${icon("plus")}<span>Agregar para todos</span></button>
         </form>
       `;
     }
@@ -361,17 +370,26 @@
         </div>`
       : "";
     return `
-      ${renderHeader("Como se pago?", "Primero confirma si la cuenta ya se pago. Si falta un producto, vuelve a editar la cuenta.")}
+      ${renderHeader("¿La cuenta ya se pago?", "Elige la situacion de la mesa. Despues te pedimos solo lo necesario.")}
       <div class="panel paid-summary">
         <p class="panel-note">${state.items.length} ${state.items.length === 1 ? "cargo agregado" : "cargos agregados"}.</p>
         <button class="secondary-button" type="button" data-go="items">Editar cuenta antes de calcular</button>
       </div>
-      <div class="list paid-mode-list" aria-label="Forma de pago">
-        ${renderPaidMode("none", "Nadie ha pagado todavia", "Claramente dice cuanto aporta cada persona antes de pagar.", "coin")}
-        ${renderPaidMode("single", "Una persona pago toda la cuenta", "Elige a esa persona y Claramente calcula cuanto le devuelven.", "user")}
-        ${renderPaidMode("multiple", "Pagos separados por producto", "Usa esto si cada producto o cargo lo pago alguien distinto.", "users")}
-      </div>
-      ${state.paidMode === "single" ? renderPaidPeople() : ""}
+      <section class="payment-section" aria-labelledby="paymentSituationTitle">
+        <h2 class="payment-section-title" id="paymentSituationTitle">Situacion de pago</h2>
+        <div class="list paid-mode-list" aria-label="Situacion de pago">
+          ${renderPaidMode("none", "Todavia no se ha pagado", "Van a juntar el dinero antes de pagar.", "coin")}
+          ${renderPaidMode("single", "Alguien ya pago", "Calculamos cuanto deben devolverle.", "user")}
+        </div>
+      </section>
+      ${state.paidMode === "none" ? renderUnpaidMethod() : ""}
+      ${state.paidMode === "single" ? renderPaidPeople() + renderPaidMethod("¿Como pago?", "Esto solo ayuda a entender el caso; el calculo depende de quien pago.") : ""}
+      <section class="payment-section special-payment-section" aria-labelledby="specialPaymentTitle">
+        <h2 class="payment-section-title" id="specialPaymentTitle">Caso especial</h2>
+        <div class="list paid-mode-list" aria-label="Caso especial de pago">
+          ${renderPaidMode("multiple", "Cada producto lo pago alguien distinto", "Usalo solo si varias personas ya pagaron productos separados.", "users")}
+        </div>
+      </section>
       ${state.paidMode === "multiple" ? renderMultiplePaid() : ""}
       <p class="error-text" id="paidError"></p>
       ${action}
@@ -391,12 +409,48 @@
   function renderPaidPeople() {
     return `
       <section class="list payer-list" aria-label="Quien pago toda la cuenta">
-        <div class="section-note">Toca a la persona que puso el dinero por toda la cuenta.</div>
+        <div class="section-note">¿Quien pago la cuenta?</div>
         ${state.people.map((person) => `
           <button class="payer-card ${state.paidById === person.id ? "active" : ""}" type="button" data-paid-by="${person.id}">
             <span class="choice-icon">${icon(person.isGuest ? "gift" : "user")}</span>
             <strong>${escapeHtml(person.name)}</strong>
             <span>${person.isGuest ? "Pago, aunque no aporta" : "Pago la cuenta"}</span>
+          </button>
+        `).join("")}
+      </section>
+    `;
+  }
+
+  function renderUnpaidMethod() {
+    return `
+      ${renderPaidMethod("¿Como van a pagar?", "Si van a usar una tarjeta, dinos quien la pondra.")}
+      ${state.paymentMethod === "card" ? renderCardPayer() : ""}
+    `;
+  }
+
+  function renderPaidMethod(title, help) {
+    return `
+      <section class="payment-section" aria-label="${escapeAttr(title)}">
+        <h2 class="payment-section-title">${escapeHtml(title)}</h2>
+        <p class="section-note">${escapeHtml(help)}</p>
+        <div class="quick-row payment-method-row">
+          <button class="quick-button ${state.paymentMethod === "cash" ? "active" : ""}" type="button" data-payment-method="cash">Efectivo</button>
+          <button class="quick-button ${state.paymentMethod === "card" ? "active" : ""}" type="button" data-payment-method="card">Tarjeta</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderCardPayer() {
+    return `
+      <section class="list payer-list" aria-label="Quien pondra la tarjeta">
+        <div class="section-note">¿Quien pondra la tarjeta?</div>
+        <p class="section-note">Esa persona recibe el dinero de los demas antes o despues de pagar.</p>
+        ${state.people.map((person) => `
+          <button class="payer-card ${state.cardPayerId === person.id ? "active" : ""}" type="button" data-card-payer="${person.id}">
+            <span class="choice-icon">${icon(person.isGuest ? "gift" : "user")}</span>
+            <strong>${escapeHtml(person.name)}</strong>
+            <span>${person.isGuest ? "Usa tarjeta, aunque no aporta" : "Pondra la tarjeta"}</span>
           </button>
         `).join("")}
       </section>
@@ -475,6 +529,8 @@
       return toggleEater(itemId, personId);
     }
     if (button.dataset.paidMode) return setPaidMode(button.dataset.paidMode);
+    if (button.dataset.paymentMethod) return setPaymentMethod(button.dataset.paymentMethod);
+    if (button.dataset.cardPayer) return setCardPayer(button.dataset.cardPayer);
     if (button.dataset.paidBy) return setPaidBy(button.dataset.paidBy);
     if (button.dataset.itemPaid) {
       const [itemId, personId] = button.dataset.itemPaid.split(":");
@@ -618,15 +674,22 @@
   }
 
   function paidReady() {
-    if (state.paidMode === "none") return true;
-    if (state.paidMode === "single") return Boolean(state.paidById);
+    if (state.paidMode === "none") {
+      if (!state.paymentMethod) return false;
+      if (state.paymentMethod === "card") return Boolean(state.cardPayerId);
+      return true;
+    }
+    if (state.paidMode === "single") return Boolean(state.paidById) && Boolean(state.paymentMethod);
     if (state.paidMode === "multiple") return state.items.every((item) => Boolean(item.paidById));
     return false;
   }
 
   function paidMessage() {
     if (!state.paidMode) return "Elige una opcion";
-    if (state.paidMode === "single") return "Elige quien pago";
+    if (state.paidMode === "none" && !state.paymentMethod) return "Elige efectivo o tarjeta";
+    if (state.paidMode === "none" && state.paymentMethod === "card" && !state.cardPayerId) return "Elige quien pondra la tarjeta";
+    if (state.paidMode === "single" && !state.paidById) return "Elige quien pago";
+    if (state.paidMode === "single" && !state.paymentMethod) return "Elige como pago";
     if (state.paidMode === "multiple") return "Falta marcar quien pago";
     return "Calcular cuenta";
   }
@@ -793,6 +856,7 @@
       if (item.paidById === personId) item.paidById = "";
     });
     if (state.paidById === personId) state.paidById = "";
+    if (state.cardPayerId === personId) state.cardPayerId = "";
     syncSharedSplits();
     render();
   }
@@ -841,11 +905,27 @@
     state.paidMode = mode;
     if (mode !== "single") state.paidById = "";
     if (mode === "multiple") {
+      state.paymentMethod = "";
+      state.cardPayerId = "";
+    }
+    if (mode === "single") state.cardPayerId = "";
+    if (mode === "multiple") {
       state.items.forEach((item) => {
         if (item.type === "single" && item.paidById) return;
         item.paidById = item.paidById || "";
       });
     }
+    render();
+  }
+
+  function setPaymentMethod(method) {
+    state.paymentMethod = method;
+    if (method !== "card") state.cardPayerId = "";
+    render();
+  }
+
+  function setCardPayer(personId) {
+    state.cardPayerId = personId;
     render();
   }
 

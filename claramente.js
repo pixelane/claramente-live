@@ -107,7 +107,6 @@
       <div class="panel">
         <p class="panel-note">Todo queda en este celular y puedes compartir el resumen al final.</p>
         <button class="primary-button" type="button" data-go="people"><span>Agregar personas</span></button>
-        <button class="secondary-button" type="button" data-toast="Abrir cuenta guardada queda para una siguiente prueba.">Abrir cuenta guardada</button>
       </div>
     `;
   }

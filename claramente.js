@@ -41,6 +41,8 @@
     toast: document.getElementById("toast")
   };
 
+  let restoringHistory = false;
+
   const iconPaths = {
     back: '<path d="M15 18l-6-6 6-6"/><path d="M9 12h12"/>',
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
@@ -62,6 +64,8 @@
   document.addEventListener("DOMContentLoaded", init);
 
   function init() {
+    window.history.replaceState({ claramenteScreen: state.screen }, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
     els.backBtn.addEventListener("click", goBack);
     els.closeSheetBtn.addEventListener("click", closeSheet);
     els.editForm.addEventListener("submit", saveEdit);
@@ -85,7 +89,6 @@
     }[state.screen];
 
     els.root.innerHTML = renderer();
-    focusFirstField();
   }
 
   function renderHeader(title, help = "", kicker = "claramente") {
@@ -644,15 +647,35 @@
       showToast(paidMessage());
       return;
     }
+    if (state.screen === screen) return;
     state.screen = screen;
+    pushFlowHistory(screen);
     render();
   }
 
   function goBack() {
     const index = screens.indexOf(state.screen);
     if (index <= 0) return;
+    if (window.history.state?.claramenteScreen === state.screen) {
+      window.history.back();
+      return;
+    }
     state.screen = screens[index - 1];
     render();
+  }
+
+  function pushFlowHistory(screen) {
+    if (restoringHistory) return;
+    window.history.pushState({ claramenteScreen: screen }, "", window.location.href);
+  }
+
+  function handlePopState(event) {
+    const screen = event.state?.claramenteScreen;
+    if (!screens.includes(screen)) return;
+    restoringHistory = true;
+    state.screen = screen;
+    render();
+    restoringHistory = false;
   }
 
   function itemsReady() {
@@ -1100,10 +1123,6 @@
   function showFieldError(error, input, message) {
     error.textContent = message;
     input.focus();
-  }
-
-  function focusFirstField() {
-    window.setTimeout(() => els.root.querySelector("input")?.focus(), 0);
   }
 
   function showToast(message) {
